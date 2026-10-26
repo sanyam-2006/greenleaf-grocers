@@ -1,0 +1,8 @@
+# Purpose: Lists all project dependencies.
+
+Flask>=3.0.0
+Flask-SQLAlchemy>=3.1.0
+pandas>=2.0.0
+Faker>=20.0.0
+pytest>=8.0.0
+python-dateutil>=2.8.2

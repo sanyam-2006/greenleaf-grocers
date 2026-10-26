@@ -1,0 +1,19 @@
+# Purpose: Prevents compiled bytecode, databases, and virtual environments from accidentally being uploaded to GitHub.
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# SQLite Database journal files
+*.db-journal
+
+# Virtual environments
+venv/
+env/
+.env
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
