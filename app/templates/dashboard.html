@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - GreenLeaf Grocers{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Executive Dashboard</h2>
+        <p class="text-muted mb-0">Real-time inventory health and sales metrics</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('main.billing_home') }}" class="btn btn-outline-success d-flex align-items-center gap-2">
+            <i class="bi bi-cart-plus"></i> Launch POS
+        </a>
+    </div>
+</div>
+
+<!-- 4 Key KPI Overview Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small fw-bold">TOTAL REVENUE</span>
+                    <h3 class="fw-bold mb-0 mt-1">${{ "%.2f"|format(stats.total_revenue) }}</h3>
+                    <span class="text-success small fw-semibold"><i class="bi bi-graph-up"></i> {{ stats.total_sales }} completed bills</span>
+                </div>
+                <div class="bg-success bg-opacity-10 text-success p-3 rounded-circle">
+                    <i class="bi bi-currency-dollar fs-3"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card info-card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small fw-bold">CATALOG ITEMS</span>
+                    <h3 class="fw-bold mb-0 mt-1">{{ stats.total_products }}</h3>
+                    <span class="text-muted small">Across {{ stats.total_suppliers }} suppliers</span>
+                </div>
+                <div class="bg-info bg-opacity-10 text-info p-3 rounded-circle">
+                    <i class="bi bi-boxes fs-3"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card warning-card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small fw-bold">LOW STOCK ALERTS</span>
+                    <h3 class="fw-bold mb-0 mt-1 text-warning">{{ stats.low_stock_count }}</h3>
+                    <span class="text-muted small">Needs replenishment</span>
+                </div>
+                <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-circle">
+                    <i class="bi bi-exclamation-triangle fs-3"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card danger-card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small fw-bold">EXPIRING SOON</span>
+                    <h3 class="fw-bold mb-0 mt-1 text-danger">{{ stats.near_expiry_count }}</h3>
+                    <span class="text-muted small">Expires in &le; 15 days</span>
+                </div>
+                <div class="bg-danger bg-opacity-10 text-danger p-3 rounded-circle">
+                    <i class="bi bi-clock-history fs-3"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Critical Inventory Alerts Section -->
+<div class="row g-4 mb-4">
+    <!-- Low Stock Table -->
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-warning d-flex align-items-center gap-2">
+                    <i class="bi bi-exclamation-circle-fill"></i> Low Stock Warning
+                </h5>
+                <span class="badge bg-warning text-dark">{{ stats.low_stock_count }} items</span>
+            </div>
+            {% if stats.low_stock_items %}
+            <div class="table-responsive">
+                <table class="table table-sm align-middle table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th class="text-center">Stock</th>
+                            <th class="text-center">Reorder Level</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in stats.low_stock_items %}
+                        <tr>
+                            <td class="fw-semibold">{{ item.name }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ item.category }}</span></td>
+                            <td class="text-center"><span class="badge bg-danger">{{ item.stock_qty }} left</span></td>
+                            <td class="text-center text-muted">{{ item.reorder_level }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-check-circle text-success fs-1"></i>
+                <p class="mt-2 mb-0">All product stock levels are healthy.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Near Expiry Table -->
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-danger d-flex align-items-center gap-2">
+                    <i class="bi bi-hourglass-split"></i> Near Expiry Attention
+                </h5>
+                <span class="badge bg-danger">{{ stats.near_expiry_count }} items</span>
+            </div>
+            {% if stats.near_expiry_items %}
+            <div class="table-responsive">
+                <table class="table table-sm align-middle table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th>Expiry Date</th>
+                            <th class="text-center">Days Remaining</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in stats.near_expiry_items %}
+                        <tr>
+                            <td class="fw-semibold">{{ item.name }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ item.category }}</span></td>
+                            <td>{{ item.expiry_date }}</td>
+                            <td class="text-center">
+                                <span class="badge {% if item.days_left <= 7 %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                    {{ item.days_left }} days
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-shield-check text-success fs-1"></i>
+                <p class="mt-2 mb-0">No products expiring within the next 15 days.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Recent Transactions Section -->
+<div class="card p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0">Recent Billing Transactions</h5>
+        <span class="text-muted small">Latest 5 sales records</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Invoice #</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Cashier</th>
+                    <th class="text-end">Final Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in stats.recent_sales %}
+                <tr>
+                    <td class="fw-bold text-success">#INV-{{ "%04d"|format(sale.sale_id) }}</td>
+                    <td>{{ sale.sale_date }}</td>
+                    <td class="text-muted">{{ sale.sale_time }}</td>
+                    <td><span class="badge bg-secondary">{{ sale.cashier }}</span></td>
+                    <td class="text-end fw-bold">${{ "%.2f"|format(sale.final_amount) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

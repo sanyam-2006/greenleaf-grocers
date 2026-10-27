@@ -2,28 +2,43 @@
 
 """
 Utility functions for security, hashing, and formatting.
-Uses werkzeug if available, otherwise falls back to Python standard library hashlib (pbkdf2_hmac).
+Universally compatible with Werkzeug and standard library pbkdf2.
 """
 import os
 import hmac
 import hashlib
 
 try:
-    from werkzeug.security import generate_password_hash, check_password_hash
+    from werkzeug.security import generate_password_hash as werkzeug_generate, check_password_hash as werkzeug_check
+    HAS_WERKZEUG = True
 except ImportError:
-    # Standard library fallback if werkzeug is not yet installed
-    def generate_password_hash(password: str) -> str:
-        """Generates a secure salt + pbkdf2_sha256 hash."""
-        salt = os.urandom(16).hex()
-        dk = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000)
-        return f"pbkdf2:sha256:100000${salt}${dk.hex()}"
+    HAS_WERKZEUG = False
 
-    def check_password_hash(pwhash: str, password: str) -> bool:
-        """Verifies a password against the stored pbkdf2 hash."""
+
+def generate_password_hash(password: str) -> str:
+    """Generates a secure password hash."""
+    if HAS_WERKZEUG:
+        return werkzeug_generate(password)
+    salt = os.urandom(16).hex()
+    dk = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000)
+    return f"pbkdf2:sha256:100000${salt}${dk.hex()}"
+
+
+def check_password_hash(pwhash: str, password: str) -> bool:
+    """Verifies a password against the stored hash universally."""
+    # 1. Try Werkzeug verifier
+    if HAS_WERKZEUG:
         try:
-            method, salt, hash_val = pwhash.split('$')
-            _, algo, iterations = method.split(':')
-            dk = hashlib.pbkdf2_hmac(algo, password.encode('utf-8'), salt.encode('utf-8'), int(iterations))
-            return hmac.compare_digest(dk.hex(), hash_val)
+            if werkzeug_check(pwhash, password):
+                return True
         except Exception:
-            return False
+            pass
+
+    # 2. Try Standard library pbkdf2 verifier
+    try:
+        method, salt, hash_val = pwhash.split('$')
+        _, algo, iterations = method.split(':')
+        dk = hashlib.pbkdf2_hmac(algo, password.encode('utf-8'), salt.encode('utf-8'), int(iterations))
+        return hmac.compare_digest(dk.hex(), hash_val)
+    except Exception:
+        return False

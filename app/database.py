@@ -71,7 +71,18 @@ CREATE INDEX IF NOT EXISTS idx_sale_items_product ON sale_items(product_id);
 
 def get_db_connection(db_path: str | Path | None = None) -> sqlite3.Connection:
     """Creates and returns an active SQLite connection configured with Row factory."""
-    path = db_path or DEFAULT_DB_PATH
+    if db_path is None:
+        try:
+            from flask import current_app, has_app_context
+            if has_app_context() and "DATABASE_PATH" in current_app.config:
+                path = current_app.config["DATABASE_PATH"]
+            else:
+                path = DEFAULT_DB_PATH
+        except ImportError:
+            path = DEFAULT_DB_PATH
+    else:
+        path = db_path
+
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
