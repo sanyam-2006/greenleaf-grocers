@@ -60,7 +60,7 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="alert('Product CRUD module unlocks on Day 3!')">
+                            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('products.') %}active{% endif %}" href="{{ url_for('products.index') }}">
                                 <i class="bi bi-boxes"></i>
                                 <span>Inventory & Stock</span>
                             </a>

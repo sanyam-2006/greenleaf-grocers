@@ -43,8 +43,10 @@ def create_app(config_class=Config):
     # Register Blueprints
     from app.routes.auth import auth_bp
     from app.routes.main import main_bp
+    from app.routes.products import products_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
+    app.register_blueprint(products_bp)
 
     return app
