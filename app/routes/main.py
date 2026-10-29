@@ -1,8 +1,3 @@
-# Purpose - Controls primary application routing and dashboard data presentation:
-# GET /: Traffic router. Automatically routes unauthenticated visitors to /auth/login, admins to /dashboard, and cashiers to /billing.
-# GET /dashboard: Protected by @admin_required. Aggregates live data directly from the Day 1 SQLite database (greenleaf.db), computing total products, supplier count, total gross revenue, active low-stock alerts, near-expiry alerts, and the latest 5 transactions.
-# GET /billing: Protected by @cashier_required. Serves as the landing hub for cashiers to begin customer checkout sessions.
-
 """
 Main dashboard and navigation routes.
 """
@@ -21,7 +16,7 @@ def index():
         return redirect(url_for("auth.login"))
     if session.get("role") == "admin":
         return redirect(url_for("main.dashboard"))
-    return redirect(url_for("main.billing_home"))
+    return redirect(url_for("billing.pos"))
 
 
 @main_bp.route("/dashboard")
@@ -71,5 +66,5 @@ def dashboard():
 @main_bp.route("/billing")
 @cashier_required
 def billing_home():
-    """Point of Sale (POS) landing view for cashiers."""
-    return render_template("billing_placeholder.html")
+    """Redirects to the Point of Sale (POS) terminal."""
+    return redirect(url_for("billing.pos"))

@@ -1,10 +1,3 @@
-# Purpose - Replaces the basic package file with the industry-standard Application Factory Pattern (create_app):
-#Instantiates and configures the Flask application.
-# Uses @app.context_processor to inject current user session variables (current_username, current_role, is_admin, is_cashier) into every Jinja2 template automatically, avoiding having to pass them in every view function.
-# Registers custom HTTP error handlers (404 Not Found, 403 Forbidden, 500 Server Error) to fulfill the project requirement of “Show friendly error messages and never crash on bad input”.
-# Registers the auth_bp and main_bp Blueprints.
-
-
 """
 GreenLeaf Grocers Application Factory.
 """
@@ -44,9 +37,11 @@ def create_app(config_class=Config):
     from app.routes.auth import auth_bp
     from app.routes.main import main_bp
     from app.routes.products import products_bp
+    from app.routes.billing import billing_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(products_bp)
+    app.register_blueprint(billing_bp)
 
     return app

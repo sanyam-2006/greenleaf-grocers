@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Invoice #INV-{{ "%04d"|format(sale.sale_id) }} - GreenLeaf Grocers{% endblock %}
+
+{% block extra_head %}
+<style>
+    .receipt-container {
+        max-width: 620px;
+        margin: 1.5rem auto;
+        background: #ffffff;
+        padding: 2.5rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e2e8f0;
+    }
+
+    @media print {
+        body {
+            background-color: #ffffff !important;
+        }
+        .navbar, .sidebar, .no-print, .btn, .badge {
+            display: none !important;
+        }
+        .receipt-container {
+            max-width: 100% !important;
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="no-print d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{{ url_for('billing.pos') }}" class="btn btn-outline-secondary d-flex align-items-center gap-1">
+            <i class="bi bi-arrow-left"></i> Back to POS Terminal
+        </a>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('billing.export_invoice_csv', sale_id=sale.sale_id) }}" class="btn btn-outline-primary d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-file-earmark-arrow-down"></i> Download CSV
+        </a>
+        <button type="button" class="btn btn-success d-flex align-items-center gap-1 shadow-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Print Invoice
+        </button>
+    </div>
+</div>
+
+<div class="receipt-container">
+    <!-- Store Header -->
+    <div class="text-center pb-3 border-bottom mb-3">
+        <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+            <i class="bi bi-shop text-success fs-3"></i>
+            <h3 class="fw-bold text-dark mb-0">GreenLeaf Grocers</h3>
+        </div>
+        <div class="text-muted small">Fresh Organic Groceries &amp; Daily Essentials</div>
+        <div class="text-muted small">124 Market Square, Green City &bull; Tel: +1 (555) 019-GROC</div>
+    </div>
+
+    <!-- Invoice Details Bar -->
+    <div class="row g-2 mb-3 small">
+        <div class="col-6">
+            <div class="text-muted">Invoice Number:</div>
+            <div class="fw-bold text-success fs-6">#INV-{{ "%04d"|format(sale.sale_id) }}</div>
+        </div>
+        <div class="col-6 text-end">
+            <div class="text-muted">Date &amp; Time:</div>
+            <div class="fw-semibold text-dark">{{ sale.sale_date }} &bull; {{ sale.sale_time }}</div>
+        </div>
+        <div class="col-6 mt-2">
+            <div class="text-muted">Processed By:</div>
+            <div class="fw-semibold text-dark">Cashier: {{ sale.cashier_name }}</div>
+        </div>
+        <div class="col-6 text-end mt-2">
+            <div class="text-muted">Payment Status:</div>
+            <span class="badge bg-success">PAID IN FULL</span>
+        </div>
+    </div>
+
+    <!-- Purchased Line Items -->
+    <div class="table-responsive mb-3">
+        <table class="table table-sm align-middle">
+            <thead class="table-light small">
+                <tr>
+                    <th>Item Description</th>
+                    <th class="text-center">Qty</th>
+                    <th class="text-end">Unit Price</th>
+                    <th class="text-end">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in sale['items'] %}
+                <tr>
+                    <td>
+                        <div class="fw-semibold text-dark">{{ item.product_name }}</div>
+                        <div class="text-muted small" style="font-size: 0.75rem;">{{ item.category }}</div>
+                    </td>
+                    <td class="text-center fw-semibold">{{ item.quantity }}</td>
+                    <td class="text-end text-muted">${{ "%.2f"|format(item.price) }}</td>
+                    <td class="text-end fw-bold">${{ "%.2f"|format(item.price * item.quantity) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Totals Summary -->
+    <div class="border-top pt-2">
+        <div class="d-flex justify-content-between mb-1 small">
+            <span class="text-muted">Subtotal:</span>
+            <span class="fw-semibold text-dark">${{ "%.2f"|format(sale.total_amount) }}</span>
+        </div>
+        {% if sale.discount > 0 %}
+        <div class="d-flex justify-content-between mb-1 small text-danger">
+            <span>Promotional Discount:</span>
+            <span>-${{ "%.2f"|format(sale.discount) }}</span>
+        </div>
+        {% endif %}
+        <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-2">
+            <span class="fw-bold fs-5 text-dark">Total Paid:</span>
+            <span class="fw-bold fs-4 text-success">${{ "%.2f"|format(sale.final_amount) }}</span>
+        </div>
+    </div>
+
+    <!-- Receipt Footer -->
+    <div class="text-center pt-4 mt-3 border-top text-muted small">
+        <p class="mb-1 fw-semibold text-dark">Thank you for shopping at GreenLeaf Grocers!</p>
+        <p class="mb-0 text-secondary" style="font-size: 0.75rem;">Keep this receipt for returns or exchanges within 7 days.</p>
+    </div>
+</div>
+{% endblock %}

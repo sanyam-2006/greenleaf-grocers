@@ -355,3 +355,22 @@ class Sale:
             return res
         finally:
             conn.close()
+    def get_history(cls, limit: int = 50, db_path=None) -> List[Dict]:
+        """Returns recent sales history with cashier details and item count."""
+        conn = get_db_connection(db_path)
+        try:
+            rows = conn.execute(
+                """
+                SELECT s.*, u.username as cashier_name, COUNT(si.sale_item_id) as item_count
+                FROM sales s
+                JOIN users u ON s.user_id = u.user_id
+                LEFT JOIN sale_items si ON s.sale_id = si.sale_id
+                GROUP BY s.sale_id
+                ORDER BY s.sale_date DESC, s.sale_time DESC
+                LIMIT ?
+                """,
+                (limit,)
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
