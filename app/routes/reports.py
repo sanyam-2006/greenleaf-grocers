@@ -16,24 +16,29 @@ reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
 @reports_bp.route("/")
 @admin_required
 def index():
-    """Renders the executive Analytics & Reports hub with KPIs and performance tables."""
+    """Renders the executive Analytics & Reports hub with interactive charts and KPIs."""
     start_date = request.args.get("start_date", "").strip() or None
     end_date = request.args.get("end_date", "").strip() or None
     sort_by = request.args.get("sort_by", "revenue").strip()
     if sort_by not in ("revenue", "quantity"):
         sort_by = "revenue"
 
-    # Compute analytics data via Pandas engine
+    # Compute analytics datasets via Pandas engine
     kpis = AnalyticsEngine.get_kpis(start_date=start_date, end_date=end_date)
-    top_products = AnalyticsEngine.get_top_products(start_date=start_date, end_date=end_date, limit=10, sort_by=sort_by)
+    top_products_rev = AnalyticsEngine.get_top_products(start_date=start_date, end_date=end_date, limit=10, sort_by="revenue")
+    top_products_qty = AnalyticsEngine.get_top_products(start_date=start_date, end_date=end_date, limit=10, sort_by="quantity")
     category_breakdown = AnalyticsEngine.get_category_breakdown(start_date=start_date, end_date=end_date)
     slow_moving = AnalyticsEngine.get_slow_moving_products(start_date=start_date, end_date=end_date, limit=10)
     sales_trend = AnalyticsEngine.get_sales_trend(start_date=start_date, end_date=end_date)
+
+    top_products = top_products_rev if sort_by == "revenue" else top_products_qty
 
     return render_template(
         "reports/index.html",
         kpis=kpis,
         top_products=top_products,
+        top_products_rev=top_products_rev,
+        top_products_qty=top_products_qty,
         category_breakdown=category_breakdown,
         slow_moving=slow_moving,
         sales_trend=sales_trend,

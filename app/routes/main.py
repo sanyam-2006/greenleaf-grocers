@@ -16,13 +16,13 @@ def index():
         return redirect(url_for("auth.login"))
     if session.get("role") == "admin":
         return redirect(url_for("main.dashboard"))
-    return redirect(url_for("billing.pos"))
+    return redirect(url_for("main.billing_home"))
 
 
 @main_bp.route("/dashboard")
 @admin_required
 def dashboard():
-    """Admin Executive Dashboard: Overview of inventory status and sales health."""
+    """Admin Executive Dashboard: Overview of inventory status, sales health, and preview charts."""
     conn = get_db_connection()
     try:
         # Key Counts
@@ -46,6 +46,11 @@ def dashboard():
             """
         ).fetchall()
 
+        # Analytics summary for dashboard visual charts
+        from app.analytics import AnalyticsEngine
+        trend = AnalyticsEngine.get_sales_trend()
+        category_breakdown = AnalyticsEngine.get_category_breakdown()
+
         stats = {
             "total_products": total_products,
             "total_suppliers": total_suppliers,
@@ -55,7 +60,9 @@ def dashboard():
             "near_expiry_count": len(near_expiry_items),
             "low_stock_items": low_stock_items[:5],
             "near_expiry_items": near_expiry_items[:5],
-            "recent_sales": [dict(r) for r in recent_sales]
+            "recent_sales": [dict(r) for r in recent_sales],
+            "sales_trend": trend[-14:] if trend else [],
+            "category_breakdown": category_breakdown
         }
     finally:
         conn.close()
@@ -66,5 +73,5 @@ def dashboard():
 @main_bp.route("/billing")
 @cashier_required
 def billing_home():
-    """Redirects to the Point of Sale (POS) terminal."""
+    """Redirects to the active Point of Sale (POS) terminal."""
     return redirect(url_for("billing.pos"))

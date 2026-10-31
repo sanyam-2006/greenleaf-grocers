@@ -1,24 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Dashboard - GreenLeaf Grocers{% endblock %}
+{% block title %}Executive Dashboard - GreenLeaf Grocers{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="fw-bold mb-1">Executive Dashboard</h2>
-        <p class="text-muted mb-0">Real-time inventory health and sales metrics</p>
+        <p class="text-muted mb-0">Real-time inventory health, active revenue metrics, and sales velocity</p>
     </div>
     <div class="d-flex gap-2">
-        <a href="{{ url_for('main.billing_home') }}" class="btn btn-outline-success d-flex align-items-center gap-2">
+        <a href="{{ url_for('billing.pos') }}" class="btn btn-outline-success d-flex align-items-center gap-2 shadow-sm">
             <i class="bi bi-cart-plus"></i> Launch POS
+        </a>
+        <a href="{{ url_for('reports.index') }}" class="btn btn-success d-flex align-items-center gap-2 shadow-sm">
+            <i class="bi bi-graph-up-arrow"></i> Full Analytics Hub
         </a>
     </div>
 </div>
 
-<!-- 4 Key KPI Overview Cards -->
+<!-- 4 Key Overview KPI Cards -->
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card p-3">
+        <div class="card stat-card p-3 shadow-sm border-0 border-start border-4 border-success">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <span class="text-muted small fw-bold">TOTAL REVENUE</span>
@@ -33,7 +36,7 @@
     </div>
 
     <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card info-card p-3">
+        <div class="card stat-card p-3 shadow-sm border-0 border-start border-4 border-info">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <span class="text-muted small fw-bold">CATALOG ITEMS</span>
@@ -48,7 +51,7 @@
     </div>
 
     <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card warning-card p-3">
+        <div class="card stat-card p-3 shadow-sm border-0 border-start border-4 border-warning">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <span class="text-muted small fw-bold">LOW STOCK ALERTS</span>
@@ -63,7 +66,7 @@
     </div>
 
     <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card danger-card p-3">
+        <div class="card stat-card p-3 shadow-sm border-0 border-start border-4 border-danger">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <span class="text-muted small fw-bold">EXPIRING SOON</span>
@@ -78,11 +81,49 @@
     </div>
 </div>
 
+<!-- Day 6: Visual Charts Overview Row -->
+<div class="row g-4 mb-4">
+    <!-- 14-Day Sales Trend Line Chart -->
+    <div class="col-lg-8">
+        <div class="card p-3 shadow-sm border-0 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-activity text-success me-1"></i>Recent Sales Velocity (Last 14 Days)
+                    </h5>
+                    <span class="text-muted small">Daily revenue fluctuations from recent billing transactions</span>
+                </div>
+                <a href="{{ url_for('reports.index') }}" class="btn btn-sm btn-outline-success">View Timeline &rarr;</a>
+            </div>
+            <div style="min-height: 250px;">
+                <canvas id="dashTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Distribution Doughnut Chart -->
+    <div class="col-lg-4">
+        <div class="card p-3 shadow-sm border-0 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-pie-chart-fill text-primary me-1"></i>Department Share
+                    </h5>
+                    <span class="text-muted small">Product category split</span>
+                </div>
+            </div>
+            <div style="min-height: 250px;" class="d-flex align-items-center justify-content-center">
+                <canvas id="dashCategoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Critical Inventory Alerts Section -->
 <div class="row g-4 mb-4">
     <!-- Low Stock Table -->
     <div class="col-lg-6">
-        <div class="card p-3 h-100">
+        <div class="card p-3 h-100 shadow-sm border-0">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="fw-bold mb-0 text-warning d-flex align-items-center gap-2">
                     <i class="bi bi-exclamation-circle-fill"></i> Low Stock Warning
@@ -92,7 +133,7 @@
             {% if stats.low_stock_items %}
             <div class="table-responsive">
                 <table class="table table-sm align-middle table-hover mb-0">
-                    <thead>
+                    <thead class="table-light small">
                         <tr>
                             <th>Product</th>
                             <th>Category</th>
@@ -123,7 +164,7 @@
 
     <!-- Near Expiry Table -->
     <div class="col-lg-6">
-        <div class="card p-3 h-100">
+        <div class="card p-3 h-100 shadow-sm border-0">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="fw-bold mb-0 text-danger d-flex align-items-center gap-2">
                     <i class="bi bi-hourglass-split"></i> Near Expiry Attention
@@ -133,7 +174,7 @@
             {% if stats.near_expiry_items %}
             <div class="table-responsive">
                 <table class="table table-sm align-middle table-hover mb-0">
-                    <thead>
+                    <thead class="table-light small">
                         <tr>
                             <th>Product</th>
                             <th>Category</th>
@@ -168,14 +209,14 @@
 </div>
 
 <!-- Recent Transactions Section -->
-<div class="card p-3">
+<div class="card p-3 shadow-sm border-0">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="fw-bold mb-0">Recent Billing Transactions</h5>
         <span class="text-muted small">Latest 5 sales records</span>
     </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-            <thead>
+            <thead class="table-light small">
                 <tr>
                     <th>Invoice #</th>
                     <th>Date</th>
@@ -198,4 +239,76 @@
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const trendData = {{ stats.sales_trend|tojson }};
+        const catData = {{ stats.category_breakdown|tojson }};
+
+        // 1. Dashboard 14-day Trend Chart
+        const trendCanvas = document.getElementById("dashTrendChart");
+        if (trendCanvas && trendData && trendData.length > 0) {
+            new Chart(trendCanvas, {
+                type: 'line',
+                data: {
+                    labels: trendData.map(d => d.sale_date),
+                    datasets: [{
+                        label: 'Daily Sales ($)',
+                        data: trendData.map(d => d.revenue),
+                        borderColor: '#2e7d32',
+                        backgroundColor: 'rgba(46, 125, 50, 0.1)',
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#2e7d32',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ` Sales: $${Number(ctx.raw).toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { ticks: { callback: v => '$' + v } }
+                    }
+                }
+            });
+        }
+
+        // 2. Dashboard Category Doughnut Chart
+        const catCanvas = document.getElementById("dashCategoryChart");
+        if (catCanvas && catData && catData.length > 0) {
+            const colors = ['#2e7d32', '#1976d2', '#f57c00', '#0097a7', '#7b1fa2', '#c2185b', '#546e7a'];
+            new Chart(catCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: catData.map(c => c.category),
+                    datasets: [{
+                        data: catData.map(c => c.revenue),
+                        backgroundColor: colors.slice(0, catData.length),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+                    },
+                    cutout: '60%'
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}

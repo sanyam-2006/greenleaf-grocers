@@ -2,6 +2,31 @@
 
 {% block title %}Sales Analytics & Reports - GreenLeaf Grocers{% endblock %}
 
+{% block extra_head %}
+<style>
+    .chart-card {
+        border-radius: 0.75rem;
+        background: #ffffff;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e2e8f0;
+    }
+    .chart-container {
+        position: relative;
+        width: 100%;
+    }
+    .quick-date-btn.active {
+        background-color: #2e7d32 !important;
+        color: #ffffff !important;
+        border-color: #2e7d32 !important;
+    }
+    .view-toggle-btn.active {
+        background-color: #1976d2 !important;
+        color: #ffffff !important;
+        border-color: #1976d2 !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- Top Header & Export Actions -->
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
@@ -11,46 +36,50 @@
         </h2>
         <p class="text-muted mb-0">Business KPIs, inventory velocity, and multi-department performance metrics</p>
     </div>
-    <div class="dropdown">
-        <button class="btn btn-outline-success dropdown-toggle d-flex align-items-center gap-2 shadow-sm" type="button" data-bs-toggle="dropdown">
-            <i class="bi bi-file-earmark-arrow-down"></i> Export CSV Reports
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow">
-            <li><h6 class="dropdown-header">Select Report Dataset</h6></li>
-            <li><a class="dropdown-item" href="{{ url_for('reports.export_csv', report_type='daily_sales', start_date=start_date, end_date=end_date) }}">
-                <i class="bi bi-calendar-check me-2 text-primary"></i>Daily Sales Summary
-            </a></li>
-            <li><a class="dropdown-item" href="{{ url_for('reports.export_csv', report_type='categories', start_date=start_date, end_date=end_date) }}">
-                <i class="bi bi-pie-chart me-2 text-success"></i>Category Breakdown
-            </a></li>
-            <li><a class="dropdown-item" href="{{ url_for('reports.export_csv', report_type='top_products', start_date=start_date, end_date=end_date) }}">
-                <i class="bi bi-trophy me-2 text-warning"></i>Top Performing Products
-            </a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="{{ url_for('reports.export_csv', report_type='slow_moving', start_date=start_date, end_date=end_date) }}">
-                <i class="bi bi-hourglass-split me-2 text-danger"></i>Slow-Moving Stock Watchlist
-            </a></li>
-        </ul>
+    <div class="d-flex gap-2">
+        <div class="dropdown">
+            <button class="btn btn-outline-success dropdown-toggle d-flex align-items-center gap-2 shadow-sm" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-file-earmark-arrow-down"></i> Export CSV Reports
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow">
+                <li><h6 class="dropdown-header">Select Report Dataset</h6></li>
+                <li><a class="dropdown-item" href="{{ url_for('reports.export_csv', report_type='daily_sales', start_date=start_date, end_date=end_date) }}">
+                    <i class="bi bi-calendar-check me-2 text-primary"></i>Daily Sales Summary
+                </a></li>
+                <li><a class="dropdown-item" href="{{ url_for('reports.export_csv', report_type='categories', start_date=start_date, end_date=end_date) }}">
+                    <i class="bi bi-pie-chart me-2 text-success"></i>Category Breakdown
+                </a></li>
+                <li><a class="dropdown-item" href="{{ url_for('reports.export_csv', report_type='top_products', start_date=start_date, end_date=end_date) }}">
+                    <i class="bi bi-trophy me-2 text-warning"></i>Top Performing Products
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{{ url_for('reports.export_csv', report_type='slow_moving', start_date=start_date, end_date=end_date) }}">
+                    <i class="bi bi-hourglass-split me-2 text-danger"></i>Slow-Moving Stock Watchlist
+                </a></li>
+            </ul>
+        </div>
     </div>
 </div>
 
-<!-- Date Filter Bar -->
+<!-- Date Range Selector & Quick Presets -->
 <div class="card p-3 mb-4 shadow-sm border-0 bg-white">
-    <form method="GET" action="{{ url_for('reports.index') }}" class="row g-2 align-items-end">
+    <form id="filterForm" method="GET" action="{{ url_for('reports.index') }}" class="row g-2 align-items-end">
         <div class="col-md-3">
             <label class="form-label small fw-semibold text-secondary">FROM DATE</label>
-            <input type="date" class="form-control form-control-sm" name="start_date" value="{{ start_date }}">
+            <input type="date" id="startDateInput" class="form-control form-control-sm" name="start_date" value="{{ start_date }}">
         </div>
         <div class="col-md-3">
             <label class="form-label small fw-semibold text-secondary">TO DATE</label>
-            <input type="date" class="form-control form-control-sm" name="end_date" value="{{ end_date }}">
+            <input type="date" id="endDateInput" class="form-control form-control-sm" name="end_date" value="{{ end_date }}">
         </div>
         <div class="col-md-3">
-            <label class="form-label small fw-semibold text-secondary">RANK PRODUCTS BY</label>
-            <select name="sort_by" class="form-select form-select-sm">
-                <option value="revenue" {% if sort_by == 'revenue' %}selected{% endif %}>Highest Revenue ($)</option>
-                <option value="quantity" {% if sort_by == 'quantity' %}selected{% endif %}>Highest Units Sold</option>
-            </select>
+            <label class="form-label small fw-semibold text-secondary">QUICK DATE PRESETS</label>
+            <div class="btn-group btn-group-sm w-100" role="group">
+                <button type="button" class="btn btn-outline-secondary" onclick="applyQuickDate(7)">Last 7D</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="applyQuickDate(30)">Last 30D</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="applyQuickDate(90)">Last 90D</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="applyQuickDate(0)">All Time</button>
+            </div>
         </div>
         <div class="col-md-3 d-flex gap-2">
             <button type="submit" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center gap-1">
@@ -130,16 +159,82 @@
     </div>
 </div>
 
+<!-- ======================================================== -->
+<!-- DAY 6 INTERACTIVE CHART VISUALIZATION SUITE -->
+<!-- ======================================================== -->
+<div class="row g-4 mb-4">
+    <!-- Chart 1: Sales Revenue Timeline Trend (Line Chart) -->
+    <div class="col-lg-8">
+        <div class="card chart-card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-activity text-success me-1"></i>Sales Revenue Timeline Trend
+                    </h5>
+                    <span class="text-muted small">Daily gross sales revenue performance over time</span>
+                </div>
+                <span class="badge bg-success bg-opacity-10 text-success border border-success">
+                    {{ sales_trend|length }} Data Points
+                </span>
+            </div>
+            <div class="chart-container" style="min-height: 280px;">
+                <canvas id="salesTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart 2: Category Revenue Breakdown (Doughnut Chart) -->
+    <div class="col-lg-4">
+        <div class="card chart-card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-pie-chart-fill text-primary me-1"></i>Department Share
+                    </h5>
+                    <span class="text-muted small">Revenue contribution by category</span>
+                </div>
+            </div>
+            <div class="chart-container d-flex align-items-center justify-content-center" style="min-height: 280px;">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart 3: Top 10 Best Selling Products with Dynamic Toggle -->
+<div class="card chart-card p-3 mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+        <div>
+            <h5 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-bar-chart-fill text-warning me-1"></i>Top 10 Performing Products
+            </h5>
+            <span class="text-muted small">Compare product velocity across revenue earned vs physical units sold</span>
+        </div>
+        <!-- Interactive View Toggle -->
+        <div class="btn-group btn-group-sm" role="group">
+            <button type="button" id="btnViewRevenue" class="btn btn-outline-primary active" onclick="switchProductChartView('revenue')">
+                <i class="bi bi-currency-dollar me-1"></i>View by Revenue ($)
+            </button>
+            <button type="button" id="btnViewQuantity" class="btn btn-outline-primary" onclick="switchProductChartView('quantity')">
+                <i class="bi bi-box-seam me-1"></i>View by Units Sold
+            </button>
+        </div>
+    </div>
+    <div class="chart-container" style="min-height: 290px;">
+        <canvas id="topProductsChart"></canvas>
+    </div>
+</div>
+
 <!-- Performance Tables Row 1 -->
 <div class="row g-4 mb-4">
-    <!-- Top 10 Best Sellers -->
+    <!-- Top 10 Best Sellers Table -->
     <div class="col-lg-7">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <h5 class="fw-bold mb-0 text-dark">
-                    <i class="bi bi-trophy text-warning me-1"></i>Top 10 Best Selling Products
+                    <i class="bi bi-trophy text-warning me-1"></i>Top 10 Product Catalog Table
                 </h5>
-                <span class="badge bg-light text-secondary border">Sorted by {{ sort_by.capitalize() }}</span>
+                <span class="badge bg-light text-secondary border">Leaderboard</span>
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
@@ -153,7 +248,7 @@
                             <th class="text-end pe-3">Revenue</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="topProductsTableBody">
                         {% if top_products %}
                             {% for p in top_products %}
                             <tr>
@@ -178,12 +273,12 @@
         </div>
     </div>
 
-    <!-- Category Distribution Breakdown -->
+    <!-- Category Distribution Breakdown Progress Bars -->
     <div class="col-lg-5">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header bg-white py-3">
                 <h5 class="fw-bold mb-0 text-dark">
-                    <i class="bi bi-pie-chart text-success me-1"></i>Department Revenue Share
+                    <i class="bi bi-pie-chart text-success me-1"></i>Department Market Share
                 </h5>
             </div>
             <div class="card-body p-3">
@@ -260,12 +355,12 @@
         </div>
     </div>
 
-    <!-- Daily Revenue Timeline -->
+    <!-- Daily Revenue Timeline Audit -->
     <div class="col-lg-6">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <h5 class="fw-bold mb-0 text-dark">
-                    <i class="bi bi-calendar-week text-primary me-1"></i>Recent Daily Sales Summary
+                    <i class="bi bi-calendar-week text-primary me-1"></i>Recent Daily Sales Audit
                 </h5>
                 <span class="text-muted small">Timeline audit</span>
             </div>
@@ -302,4 +397,231 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // -------------------------------------------------------------
+    // Day 6: Chart.js Visualizations & Dynamic Toggles
+    // -------------------------------------------------------------
+    const trendData = {{ sales_trend|tojson }};
+    const catData = {{ category_breakdown|tojson }};
+    const topProdsRev = {{ top_products_rev|tojson }};
+    const topProdsQty = {{ top_products_qty|tojson }};
+
+    let topProductsChartInstance = null;
+
+    // Quick Date Preset Handler
+    function applyQuickDate(days) {
+        const startInput = document.getElementById('startDateInput');
+        const endInput = document.getElementById('endDateInput');
+        if (days === 0) {
+            startInput.value = '';
+            endInput.value = '';
+        } else {
+            const today = new Date();
+            const pastDate = new Date();
+            pastDate.setDate(today.getDate() - days);
+            startInput.value = pastDate.toISOString().split('T')[0];
+            endInput.value = today.toISOString().split('T')[0];
+        }
+        document.getElementById('filterForm').submit();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        // 1. Sales Trend Line Chart
+        const trendCanvas = document.getElementById("salesTrendChart");
+        if (trendCanvas && trendData && trendData.length > 0) {
+            const labels = trendData.map(d => d.sale_date);
+            const revenues = trendData.map(d => d.revenue);
+            const bills = trendData.map(d => d.bills_count);
+
+            new Chart(trendCanvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Daily Revenue ($)',
+                            data: revenues,
+                            borderColor: '#2e7d32',
+                            backgroundColor: 'rgba(46, 125, 50, 0.12)',
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: labels.length > 30 ? 1 : 4,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: '#2e7d32',
+                            borderWidth: 2.5,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Customer Bills',
+                            data: bills,
+                            borderColor: '#1976d2',
+                            backgroundColor: 'transparent',
+                            borderDash: [5, 5],
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            borderWidth: 1.5,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 14 } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.dataset.yAxisID === 'y') {
+                                        return ` Revenue: $${Number(context.raw).toFixed(2)}`;
+                                    }
+                                    return ` Bills: ${context.raw}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            ticks: { callback: value => '$' + value }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Department Category Doughnut Chart
+        const catCanvas = document.getElementById("categoryChart");
+        if (catCanvas && catData && catData.length > 0) {
+            const catLabels = catData.map(c => c.category);
+            const catRevenues = catData.map(c => c.revenue);
+            const colors = ['#2e7d32', '#1976d2', '#f57c00', '#0097a7', '#7b1fa2', '#c2185b', '#546e7a'];
+
+            new Chart(catCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: catLabels,
+                    datasets: [{
+                        data: catRevenues,
+                        backgroundColor: colors.slice(0, catLabels.length),
+                        borderWidth: 2,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = total > 0 ? ((context.raw / total) * 100).toFixed(1) : 0;
+                                    return ` ${context.label}: $${Number(context.raw).toFixed(2)} (${pct}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '62%'
+                }
+            });
+        }
+
+        // 3. Top Products Horizontal Bar Chart
+        initTopProductsChart('revenue');
+    });
+
+    // Initialize or Update Top Products Chart
+    function initTopProductsChart(metric) {
+        const topCanvas = document.getElementById("topProductsChart");
+        if (!topCanvas) return;
+
+        const isRevenue = (metric === 'revenue');
+        const dataSet = isRevenue ? topProdsRev : topProdsQty;
+
+        const labels = dataSet.map(p => p.name);
+        const values = isRevenue ? dataSet.map(p => p.total_revenue) : dataSet.map(p => p.total_qty);
+        const barColor = isRevenue ? 'rgba(46, 125, 50, 0.85)' : 'rgba(25, 118, 210, 0.85)';
+        const borderColor = isRevenue ? '#1b5e20' : '#0d47a1';
+        const labelText = isRevenue ? 'Revenue ($)' : 'Units Sold';
+
+        if (topProductsChartInstance) {
+            topProductsChartInstance.destroy();
+        }
+
+        topProductsChartInstance = new Chart(topCanvas, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: labelText,
+                    data: values,
+                    backgroundColor: barColor,
+                    borderColor: borderColor,
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return isRevenue
+                                    ? ` Revenue: $${Number(context.raw).toFixed(2)}`
+                                    : ` Quantity: ${context.raw} units`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            callback: value => isRevenue ? '$' + value : value
+                        }
+                    },
+                    y: {
+                        ticks: { font: { size: 11 } }
+                    }
+                }
+            }
+        });
+    }
+
+    // Dynamic View Switcher (Revenue vs Quantity)
+    function switchProductChartView(metric) {
+        const btnRev = document.getElementById('btnViewRevenue');
+        const btnQty = document.getElementById('btnViewQuantity');
+
+        if (metric === 'revenue') {
+            btnRev.classList.add('active');
+            btnQty.classList.remove('active');
+        } else {
+            btnQty.classList.add('active');
+            btnRev.classList.remove('active');
+        }
+
+        initTopProductsChart(metric);
+    }
+</script>
 {% endblock %}
