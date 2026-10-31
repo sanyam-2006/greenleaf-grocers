@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Sales Analytics & Reports - GreenLeaf Grocers{% endblock %}
+
+{% block content %}
+<!-- Top Header & Export Actions -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="bi bi-graph-up-arrow text-success me-2"></i>Executive Analytics &amp; Reports
+        </h2>
+        <p class="text-muted mb-0">Business KPIs, inventory velocity, and multi-department performance metrics</p>
+    </div>
+    <div class="dropdown">
+        <button class="btn btn-outline-success dropdown-toggle d-flex align-items-center gap-2 shadow-sm" type="button" data-bs-toggle="dropdown">
+            <i class="bi bi-file-earmark-arrow-down"></i> Export CSV Reports
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow">
+            <li><h6 class="dropdown-header">Select Report Dataset</h6></li>
+            <li><a class="dropdown-item" href="{{ url_for('reports.export_csv', report_type='daily_sales', start_date=start_date, end_date=end_date) }}">
+                <i class="bi bi-calendar-check me-2 text-primary"></i>Daily Sales Summary
+            </a></li>
+            <li><a class="dropdown-item" href="{{ url_for('reports.export_csv', report_type='categories', start_date=start_date, end_date=end_date) }}">
+                <i class="bi bi-pie-chart me-2 text-success"></i>Category Breakdown
+            </a></li>
+            <li><a class="dropdown-item" href="{{ url_for('reports.export_csv', report_type='top_products', start_date=start_date, end_date=end_date) }}">
+                <i class="bi bi-trophy me-2 text-warning"></i>Top Performing Products
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{{ url_for('reports.export_csv', report_type='slow_moving', start_date=start_date, end_date=end_date) }}">
+                <i class="bi bi-hourglass-split me-2 text-danger"></i>Slow-Moving Stock Watchlist
+            </a></li>
+        </ul>
+    </div>
+</div>
+
+<!-- Date Filter Bar -->
+<div class="card p-3 mb-4 shadow-sm border-0 bg-white">
+    <form method="GET" action="{{ url_for('reports.index') }}" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold text-secondary">FROM DATE</label>
+            <input type="date" class="form-control form-control-sm" name="start_date" value="{{ start_date }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold text-secondary">TO DATE</label>
+            <input type="date" class="form-control form-control-sm" name="end_date" value="{{ end_date }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold text-secondary">RANK PRODUCTS BY</label>
+            <select name="sort_by" class="form-select form-select-sm">
+                <option value="revenue" {% if sort_by == 'revenue' %}selected{% endif %}>Highest Revenue ($)</option>
+                <option value="quantity" {% if sort_by == 'quantity' %}selected{% endif %}>Highest Units Sold</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center gap-1">
+                <i class="bi bi-funnel"></i> Apply Filter
+            </button>
+            <a href="{{ url_for('reports.index') }}" class="btn btn-outline-secondary btn-sm" title="Clear Filters">
+                <i class="bi bi-arrow-clockwise"></i>
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- 5 Key Performance Indicators (KPIs) Cards -->
+<div class="row g-3 mb-4">
+    <!-- KPI 1: Total Revenue -->
+    <div class="col-sm-6 col-xl-2" style="flex: 1 1 18%;">
+        <div class="card h-100 p-3 shadow-sm border-0 border-start border-4 border-success">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="text-muted small fw-semibold">TOTAL REVENUE</span>
+                <i class="bi bi-currency-dollar text-success fs-5"></i>
+            </div>
+            <div class="fs-4 fw-bold text-dark">${{ "%.2f"|format(kpis.total_revenue) }}</div>
+            <div class="text-muted small mt-1">Discounts: -${{ "%.2f"|format(kpis.total_discounts) }}</div>
+        </div>
+    </div>
+
+    <!-- KPI 2: Average Bill Value -->
+    <div class="col-sm-6 col-xl-2" style="flex: 1 1 18%;">
+        <div class="card h-100 p-3 shadow-sm border-0 border-start border-4 border-primary">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="text-muted small fw-semibold">AVG BILL VALUE</span>
+                <i class="bi bi-receipt-cutoff text-primary fs-5"></i>
+            </div>
+            <div class="fs-4 fw-bold text-dark">${{ "%.2f"|format(kpis.avg_bill_value) }}</div>
+            <div class="text-muted small mt-1">{{ kpis.total_bills }} total customer bills</div>
+        </div>
+    </div>
+
+    <!-- KPI 3: Stock Turnover -->
+    <div class="col-sm-6 col-xl-2" style="flex: 1 1 18%;">
+        <div class="card h-100 p-3 shadow-sm border-0 border-start border-4 border-info">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="text-muted small fw-semibold">STOCK TURNOVER</span>
+                <i class="bi bi-arrow-repeat text-info fs-5"></i>
+            </div>
+            <div class="fs-4 fw-bold text-dark">{{ "%.2f"|format(kpis.stock_turnover) }}x</div>
+            <div class="text-muted small mt-1">Asset Value: ${{ "%.0f"|format(kpis.inventory_valuation) }}</div>
+        </div>
+    </div>
+
+    <!-- KPI 4: Low-Stock Count -->
+    <div class="col-sm-6 col-xl-2" style="flex: 1 1 18%;">
+        <div class="card h-100 p-3 shadow-sm border-0 border-start border-4 {% if kpis.low_stock_count > 0 %}border-danger{% else %}border-secondary{% endif %}">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="text-muted small fw-semibold">LOW-STOCK ITEMS</span>
+                <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
+            </div>
+            <div class="fs-4 fw-bold {% if kpis.low_stock_count > 0 %}text-danger{% else %}text-dark{% endif %}">
+                {{ kpis.low_stock_count }}
+            </div>
+            <div class="text-muted small mt-1">{{ kpis.near_expiry_count }} expiring in &le;15d</div>
+        </div>
+    </div>
+
+    <!-- KPI 5: Top Category Share -->
+    <div class="col-sm-6 col-xl-2" style="flex: 1 1 18%;">
+        <div class="card h-100 p-3 shadow-sm border-0 border-start border-4 border-warning">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="text-muted small fw-semibold">TOP CATEGORY</span>
+                <i class="bi bi-pie-chart-fill text-warning fs-5"></i>
+            </div>
+            <div class="fs-4 fw-bold text-dark">{{ kpis.top_category_share }}%</div>
+            <div class="text-muted small mt-1 text-truncate" title="{{ kpis.top_category_name }}">
+                {{ kpis.top_category_name }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Tables Row 1 -->
+<div class="row g-4 mb-4">
+    <!-- Top 10 Best Sellers -->
+    <div class="col-lg-7">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-trophy text-warning me-1"></i>Top 10 Best Selling Products
+                </h5>
+                <span class="badge bg-light text-secondary border">Sorted by {{ sort_by.capitalize() }}</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                        <tr>
+                            <th class="ps-3" style="width: 40px;">#</th>
+                            <th>Product Name</th>
+                            <th>Category</th>
+                            <th class="text-end">Unit Price</th>
+                            <th class="text-center">Units Sold</th>
+                            <th class="text-end pe-3">Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if top_products %}
+                            {% for p in top_products %}
+                            <tr>
+                                <td class="ps-3 fw-bold text-secondary">{{ loop.index }}</td>
+                                <td>
+                                    <div class="fw-semibold text-dark">{{ p.name }}</div>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">{{ p.category }}</span></td>
+                                <td class="text-end text-muted small">${{ "%.2f"|format(p.unit_price) }}</td>
+                                <td class="text-center fw-bold text-primary">{{ p.total_qty }}</td>
+                                <td class="text-end pe-3 fw-bold text-success">${{ "%.2f"|format(p.total_revenue) }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">No sales recorded for the selected date range.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Distribution Breakdown -->
+    <div class="col-lg-5">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-pie-chart text-success me-1"></i>Department Revenue Share
+                </h5>
+            </div>
+            <div class="card-body p-3">
+                {% if category_breakdown %}
+                    <div class="d-flex flex-column gap-3">
+                        {% for cat in category_breakdown %}
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-1 small">
+                                <span class="fw-semibold text-dark">{{ cat.category }}</span>
+                                <div>
+                                    <span class="text-muted me-2">{{ cat.quantity_sold }} sold</span>
+                                    <strong class="text-success">${{ "%.2f"|format(cat.revenue) }}</strong>
+                                    <span class="badge bg-secondary ms-1">{{ cat.share_pct }}%</span>
+                                </div>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ cat.share_pct }}%;"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-4 mb-0">No category sales data found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Tables Row 2 -->
+<div class="row g-4">
+    <!-- Slow-Moving Stock / Dead Inventory Alert -->
+    <div class="col-lg-6">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-hourglass-split text-danger me-1"></i>Slow-Moving Inventory Watchlist
+                </h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                        <tr>
+                            <th class="ps-3">Product Name</th>
+                            <th>Category</th>
+                            <th class="text-center">Units Sold</th>
+                            <th class="text-center">Current Stock</th>
+                            <th class="text-end pe-3">Tied-Up Capital</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if slow_moving %}
+                            {% for s in slow_moving %}
+                            <tr>
+                                <td class="ps-3 fw-semibold text-dark">{{ s.name }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ s.category }}</span></td>
+                                <td class="text-center">
+                                    <span class="badge {% if s.units_sold == 0 %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                        {{ s.units_sold }}
+                                    </span>
+                                </td>
+                                <td class="text-center fw-semibold">{{ s.stock_qty }}</td>
+                                <td class="text-end pe-3 text-secondary">${{ "%.2f"|format(s.stock_valuation) }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">All products have active turnover.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Revenue Timeline -->
+    <div class="col-lg-6">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-calendar-week text-primary me-1"></i>Recent Daily Sales Summary
+                </h5>
+                <span class="text-muted small">Timeline audit</span>
+            </div>
+            <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small sticky-top">
+                        <tr>
+                            <th class="ps-3">Date</th>
+                            <th class="text-center">Bills Count</th>
+                            <th class="text-end">Discounts</th>
+                            <th class="text-end">Avg Ticket</th>
+                            <th class="text-end pe-3">Total Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if sales_trend %}
+                            {% for t in sales_trend|reverse %}
+                            <tr>
+                                <td class="ps-3 fw-semibold">{{ t.sale_date }}</td>
+                                <td class="text-center"><span class="badge bg-light text-dark border">{{ t.bills_count }}</span></td>
+                                <td class="text-end text-muted small">${{ "%.2f"|format(t.discounts) }}</td>
+                                <td class="text-end text-muted small">${{ "%.2f"|format(t.avg_ticket) }}</td>
+                                <td class="text-end pe-3 fw-bold text-success">${{ "%.2f"|format(t.revenue) }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">No sales recorded.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

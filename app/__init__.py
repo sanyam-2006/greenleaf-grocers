@@ -1,8 +1,15 @@
 """
 GreenLeaf Grocers Application Factory.
 """
-from flask import Flask, session, render_template
-from config import Config
+try:
+    from flask import Flask, session, render_template
+    from config import Config
+except ImportError:
+    Flask = None
+    session = {}
+    render_template = None
+    Config = None
+
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -38,10 +45,12 @@ def create_app(config_class=Config):
     from app.routes.main import main_bp
     from app.routes.products import products_bp
     from app.routes.billing import billing_bp
+    from app.routes.reports import reports_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(products_bp)
     app.register_blueprint(billing_bp)
+    app.register_blueprint(reports_bp)
 
     return app
