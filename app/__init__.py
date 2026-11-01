@@ -46,11 +46,13 @@ def create_app(config_class=Config):
     from app.routes.products import products_bp
     from app.routes.billing import billing_bp
     from app.routes.reports import reports_bp
+    from app.routes.suppliers import suppliers_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(products_bp)
     app.register_blueprint(billing_bp)
     app.register_blueprint(reports_bp)
+    app.register_blueprint(suppliers_bp)
 
     return app

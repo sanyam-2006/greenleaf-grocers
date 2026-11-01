@@ -64,7 +64,7 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="alert('Suppliers module unlocks on Day 3!')">
+                            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('suppliers.') %}active{% endif %}" href="{{ url_for('suppliers.index') }}">
                                 <i class="bi bi-truck"></i>
                                 <span>Suppliers</span>
                             </a>

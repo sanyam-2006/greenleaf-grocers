@@ -1,30 +1,21 @@
 """
-Purpose: Implements the business logic and queries:-
-- User: Role verification (admin vs cashier), password checking.
-- Supplier: Create and list vendors.
-- Product: CRUD operations, search, category filter, low-stock alerts, near-expiry alerts, validation.
-- Sale: Multi-item checkout executed in a single atomic transaction. Automatically rejects negative quantities, prevents selling more than available stock, inserts records into sales and sale_items, and deducts stock from products.
+Data Access Models for GreenLeaf Grocers:
+User, Supplier, Product, and Sale with atomic transaction support.
 """
-
-"""
-Data models and query helpers for GreenLeaf Grocers.
-Implements business validation, stock consistency, and relational integrity.
-"""
-from datetime import datetime, date
-from typing import List, Dict, Optional, Tuple, Any
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 from app.database import get_db_connection
 from app.utils import generate_password_hash, check_password_hash
 
 
 class User:
-    """User model supporting role-based access (admin, cashier)."""
+    """User account model supporting role-based access control (Admin vs Cashier)."""
 
-    def __init__(self, user_id: int, username: str, password_hash: str, role: str, created_at: Any = None):
+    def __init__(self, user_id: int, username: str, password_hash: str, role: str):
         self.user_id = user_id
         self.username = username
         self.password_hash = password_hash
         self.role = role
-        self.created_at = created_at
 
     @property
     def is_admin(self) -> bool:
@@ -32,18 +23,7 @@ class User:
 
     @property
     def is_cashier(self) -> bool:
-        return self.role == "cashier"
-
-    @classmethod
-    def get_by_username(cls, username: str, db_path=None) -> Optional["User"]:
-        conn = get_db_connection(db_path)
-        try:
-            row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
-            if row:
-                return cls(row["user_id"], row["username"], row["password_hash"], row["role"], row["created_at"])
-            return None
-        finally:
-            conn.close()
+        return self.role in ("cashier", "admin")
 
     @classmethod
     def get_by_id(cls, user_id: int, db_path=None) -> Optional["User"]:
@@ -51,7 +31,18 @@ class User:
         try:
             row = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
             if row:
-                return cls(row["user_id"], row["username"], row["password_hash"], row["role"], row["created_at"])
+                return cls(row["user_id"], row["username"], row["password_hash"], row["role"])
+            return None
+        finally:
+            conn.close()
+
+    @classmethod
+    def get_by_username(cls, username: str, db_path=None) -> Optional["User"]:
+        conn = get_db_connection(db_path)
+        try:
+            row = conn.execute("SELECT * FROM users WHERE username = ?", (username.strip(),)).fetchone()
+            if row:
+                return cls(row["user_id"], row["username"], row["password_hash"], row["role"])
             return None
         finally:
             conn.close()
@@ -90,7 +81,39 @@ class Supplier:
             conn.close()
 
     @classmethod
+    def get_all_with_counts(cls, db_path=None) -> List[Dict]:
+        """Returns suppliers with count of active inventory products supplied."""
+        conn = get_db_connection(db_path)
+        try:
+            rows = conn.execute(
+                """
+                SELECT s.*, COUNT(p.product_id) as product_count
+                FROM suppliers s
+                LEFT JOIN products p ON s.supplier_id = p.supplier_id
+                GROUP BY s.supplier_id
+                ORDER BY s.name ASC
+                """
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    @classmethod
+    def get_by_id(cls, supplier_id: int, db_path=None) -> Optional[Dict]:
+        conn = get_db_connection(db_path)
+        try:
+            row = conn.execute("SELECT * FROM suppliers WHERE supplier_id = ?", (supplier_id,)).fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
+    @classmethod
     def create(cls, name: str, phone: str, email: str = "", db_path=None) -> int:
+        if not name or not name.strip():
+            raise ValueError("Supplier name cannot be empty.")
+        if not phone or not phone.strip():
+            raise ValueError("Supplier phone number is required.")
+
         conn = get_db_connection(db_path)
         try:
             with conn:
@@ -99,6 +122,34 @@ class Supplier:
                     (name.strip(), phone.strip(), email.strip() if email else None)
                 )
                 return cur.lastrowid
+        finally:
+            conn.close()
+
+    @classmethod
+    def update(cls, supplier_id: int, name: str, phone: str, email: str = "", db_path=None) -> bool:
+        if not name or not name.strip():
+            raise ValueError("Supplier name cannot be empty.")
+        if not phone or not phone.strip():
+            raise ValueError("Supplier phone number is required.")
+
+        conn = get_db_connection(db_path)
+        try:
+            with conn:
+                cur = conn.execute(
+                    "UPDATE suppliers SET name = ?, phone = ?, email = ? WHERE supplier_id = ?",
+                    (name.strip(), phone.strip(), email.strip() if email else None, supplier_id)
+                )
+                return cur.rowcount > 0
+        finally:
+            conn.close()
+
+    @classmethod
+    def delete(cls, supplier_id: int, db_path=None) -> bool:
+        conn = get_db_connection(db_path)
+        try:
+            with conn:
+                cur = conn.execute("DELETE FROM suppliers WHERE supplier_id = ?", (supplier_id,))
+                return cur.rowcount > 0
         finally:
             conn.close()
 
@@ -112,7 +163,7 @@ class Product:
         try:
             query = """
                 SELECT p.*, s.name as supplier_name 
-                FROM products p 
+                FROM products p
                 LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
                 WHERE 1=1
             """
@@ -121,8 +172,8 @@ class Product:
                 query += " AND p.category = ?"
                 params.append(category)
             if search:
-                query += " AND (p.name LIKE ? OR p.category LIKE ?)"
-                params.extend([f"%{search}%", f"%{search}%"])
+                query += " AND p.name LIKE ?"
+                params.append(f"%{search.strip()}%")
 
             query += " ORDER BY p.name ASC"
             rows = conn.execute(query, params).fetchall()
@@ -134,7 +185,15 @@ class Product:
     def get_by_id(cls, product_id: int, db_path=None) -> Optional[Dict]:
         conn = get_db_connection(db_path)
         try:
-            row = conn.execute("SELECT * FROM products WHERE product_id = ?", (product_id,)).fetchone()
+            row = conn.execute(
+                """
+                SELECT p.*, s.name as supplier_name 
+                FROM products p
+                LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
+                WHERE p.product_id = ?
+                """,
+                (product_id,)
+            ).fetchone()
             return dict(row) if row else None
         finally:
             conn.close()
@@ -217,7 +276,7 @@ class Product:
             rows = conn.execute(
                 """
                 SELECT *, 
-                       CAST((julianday(expiry_date) - julianday('now')) AS INTEGER) AS days_left
+                       CAST((julianday(expiry_date) - julianday('now')) AS INTEGER) as days_left
                 FROM products 
                 WHERE expiry_date <= date('now', '+' || ? || ' days')
                 ORDER BY expiry_date ASC
@@ -234,8 +293,8 @@ class Sale:
 
     @classmethod
     def process_checkout(cls, user_id: int, items: List[Dict[str, Any]], discount: float = 0.0,
-                         sale_date: Optional[str] = None, sale_time: Optional[str] = None,
-                         db_path=None) -> Dict[str, Any]:
+                          sale_date: Optional[str] = None, sale_time: Optional[str] = None,
+                          db_path=None) -> Dict[str, Any]:
         """
         Processes a multi-item bill inside an atomic transaction.
         items: list of dicts with keys: {'product_id': int, 'quantity': int}
@@ -353,24 +412,5 @@ class Sale:
             res = dict(sale)
             res["items"] = [dict(it) for it in items]
             return res
-        finally:
-            conn.close()
-    def get_history(cls, limit: int = 50, db_path=None) -> List[Dict]:
-        """Returns recent sales history with cashier details and item count."""
-        conn = get_db_connection(db_path)
-        try:
-            rows = conn.execute(
-                """
-                SELECT s.*, u.username as cashier_name, COUNT(si.sale_item_id) as item_count
-                FROM sales s
-                JOIN users u ON s.user_id = u.user_id
-                LEFT JOIN sale_items si ON s.sale_id = si.sale_id
-                GROUP BY s.sale_id
-                ORDER BY s.sale_date DESC, s.sale_time DESC
-                LIMIT ?
-                """,
-                (limit,)
-            ).fetchall()
-            return [dict(r) for r in rows]
         finally:
             conn.close()

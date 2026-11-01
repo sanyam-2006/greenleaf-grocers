@@ -15,6 +15,10 @@ class AnalyticsEngine:
     @staticmethod
     def _build_date_filter(start_date: Optional[str] = None, end_date: Optional[str] = None) -> tuple[str, list]:
         """Constructs an SQL WHERE clause and parameter list for date filtering."""
+        # Auto-correct inverted date ranges defensively
+        if start_date and end_date and start_date > end_date:
+            start_date, end_date = end_date, start_date
+
         clauses = []
         params = []
         if start_date:
