@@ -1,21 +1,22 @@
 """
-Data Access Models for GreenLeaf Grocers:
-User, Supplier, Product, and Sale with atomic transaction support.
+Data models and query helpers for GreenLeaf Grocers.
+Implements business validation, stock consistency, and relational integrity.
 """
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from datetime import datetime, date
+from typing import List, Dict, Optional, Tuple, Any
 from app.database import get_db_connection
 from app.utils import generate_password_hash, check_password_hash
 
 
 class User:
-    """User account model supporting role-based access control (Admin vs Cashier)."""
+    """User model supporting role-based access (admin, cashier)."""
 
-    def __init__(self, user_id: int, username: str, password_hash: str, role: str):
+    def __init__(self, user_id: int, username: str, password_hash: str, role: str, created_at: Any = None):
         self.user_id = user_id
         self.username = username
         self.password_hash = password_hash
         self.role = role
+        self.created_at = created_at
 
     @property
     def is_admin(self) -> bool:
@@ -23,7 +24,18 @@ class User:
 
     @property
     def is_cashier(self) -> bool:
-        return self.role in ("cashier", "admin")
+        return self.role == "cashier"
+
+    @classmethod
+    def get_by_username(cls, username: str, db_path=None) -> Optional["User"]:
+        conn = get_db_connection(db_path)
+        try:
+            row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+            if row:
+                return cls(row["user_id"], row["username"], row["password_hash"], row["role"], row["created_at"])
+            return None
+        finally:
+            conn.close()
 
     @classmethod
     def get_by_id(cls, user_id: int, db_path=None) -> Optional["User"]:
@@ -31,18 +43,7 @@ class User:
         try:
             row = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
             if row:
-                return cls(row["user_id"], row["username"], row["password_hash"], row["role"])
-            return None
-        finally:
-            conn.close()
-
-    @classmethod
-    def get_by_username(cls, username: str, db_path=None) -> Optional["User"]:
-        conn = get_db_connection(db_path)
-        try:
-            row = conn.execute("SELECT * FROM users WHERE username = ?", (username.strip(),)).fetchone()
-            if row:
-                return cls(row["user_id"], row["username"], row["password_hash"], row["role"])
+                return cls(row["user_id"], row["username"], row["password_hash"], row["role"], row["created_at"])
             return None
         finally:
             conn.close()
@@ -163,7 +164,7 @@ class Product:
         try:
             query = """
                 SELECT p.*, s.name as supplier_name 
-                FROM products p
+                FROM products p 
                 LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
                 WHERE 1=1
             """
@@ -172,12 +173,21 @@ class Product:
                 query += " AND p.category = ?"
                 params.append(category)
             if search:
-                query += " AND p.name LIKE ?"
-                params.append(f"%{search.strip()}%")
+                query += " AND (p.name LIKE ? OR p.category LIKE ?)"
+                params.extend([f"%{search}%", f"%{search}%"])
 
             query += " ORDER BY p.name ASC"
             rows = conn.execute(query, params).fetchall()
             return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    @classmethod
+    def get_categories(cls, db_path=None) -> List[str]:
+        conn = get_db_connection(db_path)
+        try:
+            rows = conn.execute("SELECT DISTINCT category FROM products ORDER BY category ASC").fetchall()
+            return [r["category"] for r in rows]
         finally:
             conn.close()
 
@@ -188,7 +198,7 @@ class Product:
             row = conn.execute(
                 """
                 SELECT p.*, s.name as supplier_name 
-                FROM products p
+                FROM products p 
                 LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
                 WHERE p.product_id = ?
                 """,
@@ -276,7 +286,7 @@ class Product:
             rows = conn.execute(
                 """
                 SELECT *, 
-                       CAST((julianday(expiry_date) - julianday('now')) AS INTEGER) as days_left
+                       CAST((julianday(expiry_date) - julianday('now')) AS INTEGER) AS days_left
                 FROM products 
                 WHERE expiry_date <= date('now', '+' || ? || ' days')
                 ORDER BY expiry_date ASC
@@ -293,8 +303,8 @@ class Sale:
 
     @classmethod
     def process_checkout(cls, user_id: int, items: List[Dict[str, Any]], discount: float = 0.0,
-                          sale_date: Optional[str] = None, sale_time: Optional[str] = None,
-                          db_path=None) -> Dict[str, Any]:
+                         sale_date: Optional[str] = None, sale_time: Optional[str] = None,
+                         db_path=None) -> Dict[str, Any]:
         """
         Processes a multi-item bill inside an atomic transaction.
         items: list of dicts with keys: {'product_id': int, 'quantity': int}

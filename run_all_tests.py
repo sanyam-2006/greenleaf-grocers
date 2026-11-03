@@ -74,6 +74,15 @@ def run_comprehensive_test_suite():
 
         tag = "PASSED" if status == "PASSED" else "FAILED"
         print(f"  {mod_name:<30} [{passed_count}/{run_count} Passed]  ({pass_pct:5.1f}%) -> {tag}")
+        if fail_count > 0 or err_count > 0:
+            for test_case, trace in res.failures:
+                print(f"      [X] Failure in {test_case}:")
+                for line in trace.strip().split("\n")[-3:]:
+                    print(f"          {line}")
+            for test_case, trace in res.errors:
+                print(f"      [!] Error in {test_case}:")
+                for line in trace.strip().split("\n")[-3:]:
+                    print(f"          {line}")
 
     elapsed = time.time() - start_time
     overall_pass_pct = (
@@ -103,14 +112,15 @@ def generate_markdown_report(filepath, modules, total, failures, errors, skipped
         f.write("## 1. Executive Summary\n\n")
         f.write("| Total Tests | Passed | Failures | Errors | Skipped | Status |\n")
         f.write("| :---: | :---: | :---: | :---: | :---: | :---: |\n")
-        status_badge = "✅ PASSED" if (failures == 0 and errors == 0) else "❌ FAILED"
+        status_badge = "✅ PASSED" if (failures == 0 and errors == 0) else "❌ ISSUES DETECTED"
         f.write(f"| {total} | {total - failures - errors - skipped} | {failures} | {errors} | {skipped} | **{status_badge}** |\n\n")
 
         f.write("## 2. Module Breakdown\n\n")
         f.write("| Module | Test File | Tests Run | Passed | Failed | Errors | Pass Rate |\n")
         f.write("| :--- | :--- | :---: | :---: | :---: | :---: | :---: |\n")
         for m in modules:
-            f.write(f"| `{m['module']}` | `{m['module'].replace('.', '/')}.py` | {m['total']} | {m['passed']} | {m['failed']} | {m['errors']} | {m['pass_pct']:.1f}% |\n")
+            file_name = m["module"].replace(".", "/") + ".py"
+            f.write(f"| `{m['module']}` | `{file_name}` | {m['total']} | {m['passed']} | {m['failed']} | {m['errors']} | {m['pass_pct']:.1f}% |\n")
 
         f.write("\n## 3. Scope of Testing\n\n")
         f.write("- **Day 1**: Database Schema integrity, table constraints, model relationships, and synthetic seed data verification.\n")

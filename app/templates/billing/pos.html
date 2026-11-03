@@ -43,7 +43,7 @@
     </div>
     <div class="d-flex align-items-center gap-2">
         <span class="badge bg-light text-dark border p-2">
-            <i class="bi bi-person-circle text-primary me-1"></i> Cashier: <strong>{{ current_username }}</strong>
+            <i class="bi bi-person-circle text-primary me-1"></i> Cashier: <strong>{{ current_username }}</strong> &bull; Cashier Checkout Terminal
         </span>
     </div>
 </div>
@@ -56,116 +56,119 @@
             <div class="row g-2 mb-3">
                 <div class="col-md-7">
                     <div class="input-group">
-                        <span class="input-group-text bg-light"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" id="posSearch" class="form-control" placeholder="Search product name..." onkeyup="filterProducts()">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="posSearchInput" class="form-control border-start-0" placeholder="Search by product name..." onkeyup="filterPosProducts()">
                     </div>
                 </div>
                 <div class="col-md-5">
-                    <select id="posCategory" class="form-select" onchange="filterProducts()">
+                    <select id="posCategoryFilter" class="form-select" onchange="filterPosProducts()">
                         <option value="">All Categories</option>
                         {% for cat in categories %}
-                            <option value="{{ cat }}">{{ cat }}</option>
+                        <option value="{{ cat }}">{{ cat }}</option>
                         {% endfor %}
                     </select>
                 </div>
             </div>
 
-            <!-- Product Grid -->
+            <!-- Products Grid Scrollable Container -->
             <div class="pos-catalog-scroll pe-1">
-                <div class="row g-2" id="productGrid">
-                    {% if products %}
-                        {% for p in products %}
-                        <div class="col-sm-6 col-md-4 product-item" 
-                             data-id="{{ p.product_id }}"
-                             data-name="{{ p.name }}"
-                             data-price="{{ p.unit_price }}"
-                             data-stock="{{ p.stock_qty }}"
-                             data-category="{{ p.category }}">
-                            <div class="card p-2 pos-product-card h-100" onclick="addToCart({{ p.product_id }}, '{{ p.name|replace("'", "\\'") }}', {{ p.unit_price }}, {{ p.stock_qty }})">
-                                <div class="d-flex justify-content-between align-items-start mb-1">
-                                    <span class="badge bg-light text-secondary border small" style="font-size: 0.7rem;">{{ p.category }}</span>
-                                    <span class="badge {% if p.stock_qty <= 5 %}bg-danger{% else %}bg-success bg-opacity-75{% endif %} small" style="font-size: 0.7rem;">
-                                        {{ p.stock_qty }} left
-                                    </span>
-                                </div>
-                                <div class="fw-semibold text-dark small text-truncate" title="{{ p.name }}">{{ p.name }}</div>
-                                <div class="d-flex justify-content-between align-items-center mt-2">
-                                    <span class="fw-bold text-success">${{ "%.2f"|format(p.unit_price) }}</span>
-                                    <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 small">
-                                        <i class="bi bi-plus"></i> Add
-                                    </button>
-                                </div>
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-2" id="posProductGrid">
+                    {% for p in products %}
+                    <div class="col pos-product-item" data-name="{{ p.name|lower }}" data-category="{{ p.category }}">
+                        <div class="card h-100 p-2 pos-product-card {% if p.stock_qty <= 0 %}opacity-50 border-danger{% endif %}"
+                             onclick="addToCart({{ p.product_id }}, '{{ p.name|replace("'", "\\'") }}', {{ p.unit_price }}, {{ p.stock_qty }})">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <span class="badge bg-light text-secondary border small">{{ p.category }}</span>
+                                {% if p.stock_qty <= 0 %}
+                                    <span class="badge bg-danger">Out of Stock</span>
+                                {% elif p.stock_qty <= p.reorder_level %}
+                                    <span class="badge bg-warning text-dark">{{ p.stock_qty }} left</span>
+                                {% else %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">{{ p.stock_qty }} in stock</span>
+                                {% endif %}
+                            </div>
+                            <div class="fw-bold text-dark small text-truncate" title="{{ p.name }}">{{ p.name }}</div>
+                            <div class="d-flex justify-content-between align-items-center mt-2 pt-1 border-top">
+                                <span class="text-success fw-bold fs-6">${{ "%.2f"|format(p.unit_price) }}</span>
+                                <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill" {% if p.stock_qty <= 0 %}disabled{% endif %}>
+                                    <i class="bi bi-plus-lg"></i> Add
+                                </button>
                             </div>
                         </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="col-12 text-center py-5 text-muted">
-                            <i class="bi bi-inbox fs-1 d-block text-secondary mb-2"></i>
-                            No available products found in inventory.
-                        </div>
-                    {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div id="noProductsFound" class="text-center text-muted py-5 d-none">
+                    <i class="bi bi-search fs-1 d-block mb-2"></i>
+                    No matching products found in stock.
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- RIGHT PANEL: Current Bill / Shopping Cart (40%) -->
+    <!-- RIGHT PANEL: Live Cart & Checkout (40%) -->
     <div class="col-lg-5 col-xl-5">
         <div class="card p-3 shadow-sm h-100 d-flex flex-column">
-            <div class="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom">
+            <div class="d-flex justify-content-between align-items-center pb-2 border-bottom mb-2">
                 <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
-                    <i class="bi bi-receipt-cutoff text-success"></i> Customer Bill
+                    <i class="bi bi-receipt text-primary me-2"></i>Customer Bill
                 </h5>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearCart()">
-                    <i class="bi bi-trash3"></i> Clear Cart
+                <button type="button" class="btn btn-outline-danger btn-sm py-0" onclick="clearCart()">
+                    <i class="bi bi-trash"></i> Clear
                 </button>
             </div>
 
-            <!-- Feedback Alert Banner -->
-            <div id="checkoutAlert" class="alert d-none py-2 small mb-2" role="alert"></div>
-
-            <!-- Cart Items Table -->
-            <div class="pos-cart-scroll flex-grow-1 border rounded bg-white p-2 mb-3">
-                <table class="table table-sm align-middle mb-0" id="cartTable">
-                    <thead class="table-light small">
+            <!-- Cart Table Items -->
+            <div class="pos-cart-scroll flex-grow-1 border rounded bg-light p-2 mb-3">
+                <table class="table table-sm table-borderless align-middle mb-0" id="cartTable">
+                    <thead class="border-bottom text-muted small">
                         <tr>
                             <th>Item</th>
-                            <th class="text-center" style="width: 100px;">Qty</th>
-                            <th class="text-end" style="width: 70px;">Total</th>
+                            <th class="text-center" style="width: 105px;">Qty</th>
+                            <th class="text-end" style="width: 75px;">Total</th>
                             <th style="width: 30px;"></th>
                         </tr>
                     </thead>
-                    <tbody id="cartItemsList">
-                        <tr id="emptyCartRow">
-                            <td colspan="4" class="text-center py-5 text-muted">
-                                <i class="bi bi-cart-x fs-1 d-block text-secondary mb-2"></i>
-                                Cart is empty.<br>Click any item from the left to start billing.
-                            </td>
-                        </tr>
+                    <tbody id="cartTableBody">
+                        <!-- Populated dynamically via JS -->
                     </tbody>
                 </table>
+                <div id="emptyCartMessage" class="text-center text-muted py-5">
+                    <i class="bi bi-basket3 fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                    Cart is empty.<br>Click any product on the left to add items.
+                </div>
             </div>
 
-            <!-- Financial Calculations -->
+            <!-- Billing Calculations Box -->
             <div class="bg-light p-3 rounded border mb-3">
-                <div class="d-flex justify-content-between mb-2">
+                <div class="d-flex justify-content-between mb-1 small">
                     <span class="text-muted">Subtotal:</span>
-                    <span class="fw-semibold" id="lblSubtotal">$0.00</span>
+                    <strong id="summarySubtotal">$0.00</strong>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="text-muted">Promotional Discount ($):</span>
-                    <input type="number" step="0.50" min="0" id="txtDiscount" class="form-control form-control-sm text-end" style="width: 100px;" value="0.00" oninput="calculateTotals()">
+                <div class="d-flex justify-content-between align-items-center mb-2 small">
+                    <span class="text-muted">Discount ($):</span>
+                    <div style="width: 120px;">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">$</span>
+                            <input type="number" id="discountInput" class="form-control text-end" value="0.00" min="0" step="0.50" oninput="updateCalculations()">
+                        </div>
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                    <span class="fw-bold fs-5 text-dark">Total Payable:</span>
-                    <span class="fw-bold fs-4 text-success" id="lblFinalTotal">$0.00</span>
+                <hr class="my-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fs-5 fw-bold text-dark">Grand Total:</span>
+                    <span class="fs-4 fw-bold text-success" id="summaryGrandTotal">$0.00</span>
                 </div>
             </div>
 
-            <!-- Checkout Action Button -->
-            <button type="button" class="btn btn-success btn-lg w-100 py-3 fw-bold d-flex align-items-center justify-content-center gap-2 shadow" id="btnCheckout" onclick="processCheckout()">
-                <i class="bi bi-check-circle-fill"></i> Complete Sale &amp; Print Bill
-            </button>
+            <!-- Action Form Submission -->
+            <form id="checkoutForm" method="POST" action="/billing/checkout" onsubmit="return submitCheckout()">
+                <input type="hidden" name="cart_data" id="cartDataField">
+                <input type="hidden" name="discount" id="cartDiscountField" value="0.00">
+                <button type="submit" id="checkoutBtn" class="btn btn-success w-100 py-2 fs-5 fw-bold shadow-sm d-flex justify-content-center align-items-center gap-2" disabled>
+                    <i class="bi bi-check2-circle fs-4"></i> Complete Checkout
+                </button>
+            </form>
         </div>
     </div>
 </div>
@@ -173,190 +176,181 @@
 
 {% block extra_scripts %}
 <script>
+    // State management for Cart
     let cart = {};
 
-    function filterProducts() {
-        const search = document.getElementById("posSearch").value.toLowerCase().trim();
-        const category = document.getElementById("posCategory").value;
-        const items = document.querySelectorAll(".product-item");
+    function addToCart(productId, name, price, maxStock) {
+        if (maxStock <= 0) {
+            alert("Cannot add item: Product is out of stock.");
+            return;
+        }
 
-        items.forEach(el => {
-            const name = el.getAttribute("data-name").toLowerCase();
-            const cat = el.getAttribute("data-category");
-
-            const matchesSearch = !search || name.includes(search);
-            const matchesCat = !category || cat === category;
-
-            if (matchesSearch && matchesCat) {
-                el.style.display = "";
-            } else {
-                el.style.display = "none";
-            }
-        });
-    }
-
-    function addToCart(id, name, price, stock) {
-        if (cart[id]) {
-            if (cart[id].quantity + 1 > stock) {
-                showAlert(`Cannot add more than ${stock} units for '${name}' (max stock reached).`, "warning");
+        if (cart[productId]) {
+            if (cart[productId].qty + 1 > maxStock) {
+                alert(`Cannot add more. Maximum available stock is ${maxStock}.`);
                 return;
             }
-            cart[id].quantity += 1;
+            cart[productId].qty += 1;
         } else {
-            if (stock < 1) {
-                showAlert(`'${name}' is currently out of stock.`, "danger");
-                return;
-            }
-            cart[id] = { id, name, price, stock, quantity: 1 };
+            cart[productId] = {
+                id: productId,
+                name: name,
+                price: parseFloat(price),
+                maxStock: parseInt(maxStock),
+                qty: 1
+            };
         }
         renderCart();
     }
 
-    function updateQty(id, delta) {
-        if (!cart[id]) return;
-        const newQty = cart[id].quantity + delta;
+    function updateQty(productId, delta) {
+        if (!cart[productId]) return;
+        const newQty = cart[productId].qty + delta;
 
         if (newQty <= 0) {
-            delete cart[id];
-        } else if (newQty > cart[id].stock) {
-            showAlert(`Max stock for '${cart[id].name}' is ${cart[id].stock}.`, "warning");
-            cart[id].quantity = cart[id].stock;
+            delete cart[productId];
+        } else if (newQty > cart[productId].maxStock) {
+            alert(`Cannot exceed available stock (${cart[productId].maxStock}).`);
+            return;
         } else {
-            cart[id].quantity = newQty;
+            cart[productId].qty = newQty;
         }
         renderCart();
     }
 
-    function removeCartItem(id) {
-        if (cart[id]) {
-            delete cart[id];
+    function removeItem(productId) {
+        if (cart[productId]) {
+            delete cart[productId];
             renderCart();
         }
     }
 
     function clearCart() {
-        cart = {};
-        document.getElementById("txtDiscount").value = "0.00";
-        renderCart();
+        if (Object.keys(cart).length === 0) return;
+        if (confirm("Are you sure you want to clear the entire cart?")) {
+            cart = {};
+            document.getElementById("discountInput").value = "0.00";
+            renderCart();
+        }
     }
 
     function renderCart() {
-        const tbody = document.getElementById("cartItemsList");
-        const keys = Object.keys(cart);
+        const tbody = document.getElementById("cartTableBody");
+        const emptyMsg = document.getElementById("emptyCartMessage");
+        const checkoutBtn = document.getElementById("checkoutBtn");
+        tbody.innerHTML = "";
 
-        if (keys.length === 0) {
-            tbody.innerHTML = `
-                <tr id="emptyCartRow">
-                    <td colspan="4" class="text-center py-5 text-muted">
-                        <i class="bi bi-cart-x fs-1 d-block text-secondary mb-2"></i>
-                        Cart is empty.<br>Click any item from the left to start billing.
-                    </td>
-                </tr>
-            `;
-            document.getElementById("lblSubtotal").innerText = "$0.00";
-            document.getElementById("lblFinalTotal").innerText = "$0.00";
+        const itemKeys = Object.keys(cart);
+
+        if (itemKeys.length === 0) {
+            emptyMsg.classList.remove("d-none");
+            checkoutBtn.disabled = true;
+            updateCalculations();
             return;
         }
 
-        let html = "";
-        keys.forEach(k => {
-            const item = cart[k];
-            const lineTotal = item.price * item.quantity;
-            html += `
-                <tr>
-                    <td>
-                        <div class="fw-semibold text-dark small text-truncate" style="max-width: 140px;">${item.name}</div>
-                        <div class="text-muted small" style="font-size: 0.75rem;">$${item.price.toFixed(2)} ea</div>
-                    </td>
-                    <td class="text-center">
-                        <div class="d-inline-flex align-items-center gap-1">
-                            <button type="button" class="btn btn-sm btn-outline-secondary qty-btn" onclick="updateQty(${item.id}, -1)">-</button>
-                            <span class="fw-bold px-1">${item.quantity}</span>
-                            <button type="button" class="btn btn-sm btn-outline-secondary qty-btn" onclick="updateQty(${item.id}, 1)">+</button>
-                        </div>
-                    </td>
-                    <td class="text-end fw-semibold">$${lineTotal.toFixed(2)}</td>
-                    <td class="text-end">
-                        <button type="button" class="btn btn-link text-danger p-0" onclick="removeCartItem(${item.id})">
-                            <i class="bi bi-x-circle"></i>
-                        </button>
-                    </td>
-                </tr>
+        emptyMsg.classList.add("d-none");
+        checkoutBtn.disabled = false;
+
+        itemKeys.forEach(id => {
+            const item = cart[id];
+            const lineTotal = (item.price * item.qty).toFixed(2);
+
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>
+                    <div class="fw-bold text-dark small text-truncate" style="max-width: 140px;">${item.name}</div>
+                    <span class="text-muted small">$${item.price.toFixed(2)}/ea</span>
+                </td>
+                <td class="text-center">
+                    <div class="d-inline-flex align-items-center gap-1">
+                        <button type="button" class="btn btn-outline-secondary qty-btn btn-sm" onclick="updateQty(${item.id}, -1)">-</button>
+                        <span class="fw-bold px-1">${item.qty}</span>
+                        <button type="button" class="btn btn-outline-secondary qty-btn btn-sm" onclick="updateQty(${item.id}, 1)">+</button>
+                    </div>
+                </td>
+                <td class="text-end fw-bold text-dark small">$${lineTotal}</td>
+                <td class="text-end">
+                    <button type="button" class="btn btn-link text-danger p-0 border-0" onclick="removeItem(${item.id})" title="Remove item">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                </td>
             `;
+            tbody.appendChild(row);
         });
 
-        tbody.innerHTML = html;
-        calculateTotals();
+        updateCalculations();
     }
 
-    function calculateTotals() {
-        const keys = Object.keys(cart);
-        let subtotal = 0;
-        keys.forEach(k => {
-            subtotal += cart[k].price * cart[k].quantity;
+    function updateCalculations() {
+        let subtotal = 0.0;
+        Object.values(cart).forEach(item => {
+            subtotal += item.price * item.qty;
         });
 
-        const discountInput = parseFloat(document.getElementById("txtDiscount").value) || 0;
-        const discount = Math.max(0, Math.min(discountInput, subtotal));
-        const finalTotal = Math.max(0, subtotal - discount);
+        const discountInput = document.getElementById("discountInput");
+        let discount = parseFloat(discountInput.value) || 0.0;
 
-        document.getElementById("lblSubtotal").innerText = `$${subtotal.toFixed(2)}`;
-        document.getElementById("lblFinalTotal").innerText = `$${finalTotal.toFixed(2)}`;
-    }
-
-    function showAlert(message, type = "danger") {
-        const el = document.getElementById("checkoutAlert");
-        el.className = `alert alert-${type} py-2 small mb-2`;
-        el.innerText = message;
-        el.classList.remove("d-none");
-        setTimeout(() => {
-            el.classList.add("d-none");
-        }, 5000);
-    }
-
-    async function processCheckout() {
-        const keys = Object.keys(cart);
-        if (keys.length === 0) {
-            showAlert("Cart is empty! Add products before checking out.", "warning");
-            return;
+        if (discount < 0) {
+            discount = 0.0;
+            discountInput.value = "0.00";
         }
 
-        const discount = parseFloat(document.getElementById("txtDiscount").value) || 0;
-        const payloadItems = keys.map(k => ({
-            product_id: cart[k].id,
-            quantity: cart[k].quantity
+        if (discount > subtotal) {
+            discount = subtotal;
+            discountInput.value = subtotal.toFixed(2);
+        }
+
+        const grandTotal = Math.max(0.0, subtotal - discount);
+
+        document.getElementById("summarySubtotal").innerText = "$" + subtotal.toFixed(2);
+        document.getElementById("summaryGrandTotal").innerText = "$" + grandTotal.toFixed(2);
+        document.getElementById("cartDiscountField").value = discount.toFixed(2);
+    }
+
+    function filterPosProducts() {
+        const query = document.getElementById("posSearchInput").value.toLowerCase().trim();
+        const selectedCat = document.getElementById("posCategoryFilter").value;
+        const items = document.querySelectorAll(".pos-product-item");
+        let visibleCount = 0;
+
+        items.forEach(el => {
+            const name = el.getAttribute("data-name");
+            const cat = el.getAttribute("data-category");
+
+            const matchesQuery = query === "" || name.includes(query);
+            const matchesCategory = selectedCat === "" || cat === selectedCat;
+
+            if (matchesQuery && matchesCategory) {
+                el.classList.remove("d-none");
+                visibleCount++;
+            } else {
+                el.classList.add("d-none");
+            }
+        });
+
+        const noMatch = document.getElementById("noProductsFound");
+        if (visibleCount === 0) {
+            noMatch.classList.remove("d-none");
+        } else {
+            noMatch.classList.add("d-none");
+        }
+    }
+
+    function submitCheckout() {
+        const itemKeys = Object.keys(cart);
+        if (itemKeys.length === 0) {
+            alert("Your cart is empty. Please add items to checkout.");
+            return false;
+        }
+
+        const payload = itemKeys.map(id => ({
+            product_id: parseInt(id),
+            quantity: cart[id].qty
         }));
 
-        const btn = document.getElementById("btnCheckout");
-        btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Processing Sale...`;
-
-        try {
-            const response = await fetch("{{ url_for('billing.checkout') }}", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    items: payloadItems,
-                    discount: discount
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                window.location.href = data.redirect_url;
-            } else {
-                showAlert(data.error || "Failed to process sale.", "danger");
-                btn.disabled = false;
-                btn.innerHTML = `<i class="bi bi-check-circle-fill"></i> Complete Sale &amp; Print Bill`;
-            }
-        } catch (err) {
-            showAlert("Network or server error during checkout.", "danger");
-            btn.disabled = false;
-            btn.innerHTML = `<i class="bi bi-check-circle-fill"></i> Complete Sale &amp; Print Bill`;
-        }
+        document.getElementById("cartDataField").value = JSON.stringify(payload);
+        return true;
     }
 </script>
 {% endblock %}
